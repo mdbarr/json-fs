@@ -42,13 +42,13 @@ Object.set = function(object, propertyPath, value) {
     object = object[part];
 
     if (!object) {
-      return undefined;
+      return false;
     }
   }
 
   object[key] = value;
 
-  return object;
+  return true;
 };
 
 //////////
@@ -67,6 +67,7 @@ const interceptor = function(object, eventName) {
     set(target, key, value) {
       target[key] = value;
       events.emit(eventName, target, key, value);
+      return true;
     }
   };
 
@@ -94,7 +95,7 @@ for (const mount in mapping.mounts) {
     console.log(`Change detected for ${ mount }: ${ key } = ${ value }`);
   });
 
-  mapping.mounts[mount] = json; interceptor(json, mount);
+  mapping.mounts[mount] = interceptor(json, mount);
 }
 
 //////////
@@ -119,14 +120,13 @@ function generateBinding(object) {
 
   const intercept = {
     get(target, key) {
-      //console.log('binding-get', key, target[key], typeof target[key]);
       if (typeof target[key] === 'object' && target[key] !== null) {
         return new Proxy(target[key], intercept);
       }
       return Object.resolve(mapping.mounts, target[key]);
     },
     set(target, key, value) {
-      Object.set(mapping.mounts, target[key], value);
+      return Object.set(mapping.mounts, target[key], value);
     }
   };
 
@@ -137,5 +137,11 @@ function generateBinding(object) {
 // Tree creation
 
 const tree = generateBinding(mapping.map);
+
+//////////
+// Simple test
 console.pp(tree);
-//tree.text.image = 'crap';
+tree.text.image = 'crap';
+console.pp(tree);
+tree.text.labels['com.example.license'] = 'MIT';
+console.pp(tree);
