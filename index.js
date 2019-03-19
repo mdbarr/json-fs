@@ -3,7 +3,10 @@
 
 require('barrkeep');
 const fs = require('fs');
+const url = require('url');
+const http = require('http');
 const path = require('path');
+const querystring = require('querystring');
 
 const EventEmitter = require('events');
 
@@ -19,7 +22,8 @@ Object.defineProperty(String.prototype, 'stripWhitespace', {
 });
 
 Object.resolve = function(object, propertyPath) {
-  const parts = propertyPath.stripWhitespace().split(/\./);
+  console.log('resolve', propertyPath);
+  const parts = propertyPath.stripWhitespace().split(/[./]/);
 
   if (!object) {
     return undefined;
@@ -140,8 +144,41 @@ const tree = generateBinding(mapping.map);
 
 //////////
 // Simple test
-console.pp(tree);
-tree.text.image = 'crap';
-console.pp(tree);
-tree.text.labels['com.example.license'] = 'MIT';
-console.pp(tree);
+//console.pp(tree);
+//tree.text.image = 'crap';
+//console.pp(tree);
+//tree.text.labels['com.example.license'] = 'MIT';
+//console.pp(tree);
+
+//////////
+// Server creation
+const port = 3800;
+
+const server = http.createServer((request, response) => {
+  let data = '';
+
+  request.on('data', (chunk) => data += chunk);
+
+  request.on('end', () => {
+    const parsed = url.parse(request.url);
+    const query = querystring.parse(parsed.query);
+
+    console.pp(request.method);
+    console.pp(parsed);
+    console.pp(query);
+
+    const pathname = parsed.pathname.replace(/^\/+/, '').replace(/\/+/g, '/');
+
+    const object = pathname ? Object.resolve(tree, pathname) : tree;
+
+    const render = JSON.stringify(object, null, 2);
+
+    response.setHeader('Content-Type', 'application/json');
+    response.write(render);
+    response.end();
+  });
+});
+
+server.listen(port, () => {
+  console.log(`JSON-FS listening on http://0.0.0.0:${ port }`);
+});
