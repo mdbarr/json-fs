@@ -1,0 +1,9 @@
+{
+  "name": "json-fs",
+  "version": "0.1.0",
+  "description": "JSON multi-file filesystem with version control and API layer",
+  "main": "index.js",
+  "repository": "git@github.com:mdbarr/json-fs.git",
+  "author": "Mark Barr <mbarr@hyperingenuity.com>",
+  "license": "MIT"
+}

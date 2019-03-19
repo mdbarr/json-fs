@@ -1,0 +1,8 @@
+{
+  "mounts": {
+    "container": "container.json",
+    "create": "create.json",
+    "image": "image.json",
+    "stats": "stats.json"
+  }
+}
