@@ -55,6 +55,43 @@ Object.set = function(object, propertyPath, value) {
   return true;
 };
 
+Object.flatten = function(object, prefix = '', container = {}) {
+  if (prefix.length) {
+    prefix += '.';
+  }
+
+  for (let key in object) {
+    key = key.replace(/([.])/g, '\\$1');
+
+    const pathKey = prefix + key;
+
+    if (typeof object[key] === 'object' && object[key] !== null) {
+      Object.flatten(object[key], pathKey, container);
+    } else {
+      container[ prefix + key ] = object[key];
+    }
+  }
+  return container;
+};
+
+Object.expand = function(container, object = {}) {
+  for (const key in container) {
+    const parts = key.split(/\./);
+    const property = parts.pop();
+
+    let chunk = object;
+    for (const part of parts) {
+      if (!chunk[part]) {
+        chunk[part] = {};
+      }
+
+      chunk = chunk[part];
+    }
+    chunk[property] = container[key];
+  }
+  return object;
+};
+
 //////////
 // Event handling and Proxy
 
@@ -149,6 +186,7 @@ const tree = generateBinding(mapping.map);
 //console.pp(tree);
 //tree.text.labels['com.example.license'] = 'MIT';
 //console.pp(tree);
+//console.pp(Object.expand(Object.flatten(mapping.mounts)));
 
 //////////
 // Server creation
@@ -157,13 +195,14 @@ const port = 3800;
 const server = http.createServer((request, response) => {
   let data = '';
 
-  request.on('data', (chunk) => data += chunk);
+  request.on('data', (chunk) => { data = data + chunk; });
 
   request.on('end', () => {
     const parsed = url.parse(request.url);
     const query = querystring.parse(parsed.query);
+    const method = request.method.toLowerCase();
 
-    console.pp(request.method);
+    console.pp(method);
     console.pp(parsed);
     console.pp(query);
 
