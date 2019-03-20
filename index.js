@@ -21,7 +21,7 @@ Object.defineProperty(String.prototype, 'stripWhitespace', {
   configurable: true
 });
 
-Object.resolve = function(object, propertyPath) {
+Object.$resolve = function(object, propertyPath) {
   console.log('resolve', propertyPath);
   const parts = propertyPath.stripWhitespace().split(/[./]/);
 
@@ -38,7 +38,7 @@ Object.resolve = function(object, propertyPath) {
   return object;
 };
 
-Object.set = function(object, propertyPath, value) {
+Object.$set = function(object, propertyPath, value) {
   const parts = propertyPath.stripWhitespace().split(/\./);
   const key = parts.pop();
 
@@ -55,7 +55,7 @@ Object.set = function(object, propertyPath, value) {
   return true;
 };
 
-Object.flatten = function(object, prefix = '', container = {}) {
+Object.$flatten = function(object, prefix = '', container = {}) {
   if (typeof object !== 'object') {
     container[prefix] = object;
     return container;
@@ -65,18 +65,18 @@ Object.flatten = function(object, prefix = '', container = {}) {
     prefix += '.';
   }
 
-  for (let key in object) {
+  for (const key in object) {
     const pathKey = prefix + key;
 
     if (Array.isArray(object[key])) {
-      container[`${ pathKey }.$type`] = 'Array';
+      container[`${ pathKey }$type`] = 'Array';
       const array = object[key];
       for (let i = 0; i < array.length; i++) {
-        Object.flatten(array[i], `${ pathKey }.${ i }`, container);
+        Object.$flatten(array[i], `${ pathKey }.${ i }`, container);
       }
     } else if (typeof object[key] === 'object' && object[key] !== null) {
-      container[`${ pathKey }.$type` ] = 'Object';
-      Object.flatten(object[key], pathKey, container);
+      container[`${ pathKey }$type`] = 'Object';
+      Object.$flatten(object[key], pathKey, container);
     } else {
       container[ pathKey ] = object[key];
     }
@@ -84,7 +84,7 @@ Object.flatten = function(object, prefix = '', container = {}) {
   return container;
 };
 
-Object.expand = function(container, object = {}) {
+Object.$expand = function(container, object = {}) {
   for (const key in container) {
     const parts = key.split(/\./);
     const property = parts.pop();
@@ -97,7 +97,19 @@ Object.expand = function(container, object = {}) {
 
       chunk = chunk[part];
     }
-    chunk[property] = container[key];
+
+    if (property.endsWith('$type')) {
+      const name = property.replace(/\$type$/, '');
+      if (container[key] === 'Object') {
+        chunk[name] = {};
+      } else if (container[key] === 'Array') {
+        chunk[name] = [];
+      } else {
+        // Unknown type
+      }
+    } else {
+      chunk[property] = container[key];
+    }
   }
   return object;
 };
@@ -174,10 +186,10 @@ function generateBinding(object) {
       if (typeof target[key] === 'object' && target[key] !== null) {
         return new Proxy(target[key], intercept);
       }
-      return Object.resolve(mapping.mounts, target[key]);
+      return Object.$resolve(mapping.mounts, target[key]);
     },
     set(target, key, value) {
-      return Object.set(mapping.mounts, target[key], value);
+      return Object.$set(mapping.mounts, target[key], value);
     }
   };
 
@@ -190,13 +202,16 @@ function generateBinding(object) {
 const tree = generateBinding(mapping.map);
 
 //////////
-// Simple test
+// Simple tests
 //console.pp(tree);
 //tree.text.image = 'crap';
 //console.pp(tree);
 //tree.text.labels['com.example.license'] = 'MIT';
 //console.pp(tree);
-console.pp(Object.flatten(mapping.mounts));
+//const flat = Object.$flatten(mapping.mounts);
+//console.pp(flat);
+//const expand = Object.$expand(flat);
+//console.pp(expand);
 
 //////////
 // Server creation
@@ -218,7 +233,7 @@ const server = http.createServer((request, response) => {
 
     const pathname = parsed.pathname.replace(/^\/+/, '').replace(/\/+/g, '/');
 
-    const object = pathname ? Object.resolve(tree, pathname) : tree;
+    const object = pathname ? Object.$resolve(tree, pathname) : tree;
 
     const render = JSON.stringify(object, null, 2);
 
