@@ -56,19 +56,29 @@ Object.set = function(object, propertyPath, value) {
 };
 
 Object.flatten = function(object, prefix = '', container = {}) {
+  if (typeof object !== 'object') {
+    container[prefix] = object;
+    return container;
+  }
+
   if (prefix.length) {
     prefix += '.';
   }
 
   for (let key in object) {
-    key = key.replace(/([.])/g, '\\$1');
-
     const pathKey = prefix + key;
 
-    if (typeof object[key] === 'object' && object[key] !== null) {
+    if (Array.isArray(object[key])) {
+      container[`${ pathKey }.$type`] = 'Array';
+      const array = object[key];
+      for (let i = 0; i < array.length; i++) {
+        Object.flatten(array[i], `${ pathKey }.${ i }`, container);
+      }
+    } else if (typeof object[key] === 'object' && object[key] !== null) {
+      container[`${ pathKey }.$type` ] = 'Object';
       Object.flatten(object[key], pathKey, container);
     } else {
-      container[ prefix + key ] = object[key];
+      container[ pathKey ] = object[key];
     }
   }
   return container;
@@ -186,7 +196,7 @@ const tree = generateBinding(mapping.map);
 //console.pp(tree);
 //tree.text.labels['com.example.license'] = 'MIT';
 //console.pp(tree);
-//console.pp(Object.expand(Object.flatten(mapping.mounts)));
+console.pp(Object.flatten(mapping.mounts));
 
 //////////
 // Server creation

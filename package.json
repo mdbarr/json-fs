@@ -11,6 +11,7 @@
     "eslint": "^5.15.3"
   },
   "scripts": {
-    "lint": "eslint index.js"
+    "lint": "eslint index.js",
+    "test": "./index.js ./test/index.json"
   }
 }
