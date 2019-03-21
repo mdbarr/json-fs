@@ -114,6 +114,23 @@ Object.$expand = function(container, object = {}) {
   return object;
 };
 
+querystring.$setTypes = function(object) {
+  for (const key in object) {
+    const value = object[key];
+
+    if (parseInt(value, 10).toString() === value) {
+      object[key] = parseInt(value, 10);
+    } else if (parseFloat(value, 10).toString() === value) {
+      object[key] = parseFloat(value, 10);
+    } else if (value === 'true') {
+      object[key] = true;
+    } else if (value === 'false') {
+      object[key] = false;
+    }
+  }
+  return object;
+};
+
 //////////
 // Event handling and Proxy
 
@@ -267,6 +284,7 @@ const server = http.createServer((request, response) => {
     const parsed = url.parse(request.url);
 
     const query = querystring.parse(parsed.query);
+    querystring.$setTypes(query);
 
     console.pp(method);
     console.pp(parsed);
@@ -276,7 +294,7 @@ const server = http.createServer((request, response) => {
 
     const object = pathname ? Object.$resolve(tree, pathname) : tree;
 
-    const result = render(object, Number(query.depth || 1));
+    const result = render(object, query.depth || 1);
 
     response.send(result);
   });
