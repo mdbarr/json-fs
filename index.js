@@ -214,18 +214,59 @@ const tree = generateBinding(mapping.map);
 //console.pp(expand);
 
 //////////
+// Render objects to given depth
+
+function render(object, maxDepth = 1, depth = 0) {
+  const container = {};
+
+  if (maxDepth !== -1 && depth >= maxDepth) {
+    return container;
+  }
+
+  if (typeof object !== 'object') {
+    return object;
+  }
+
+  for (const key in object) {
+    if (Array.isArray(object[key])) {
+      container[key] = [];
+      for (let item of object[key]) {
+        item = render(item, maxDepth, depth + 1);
+        container[key].push(item);
+      }
+    } else if (typeof object[key] === 'object' && object[key] !== null) {
+      const item = render(object[key], maxDepth, depth + 1);
+      container[key] = item;
+    } else {
+      container[key] = object[key];
+    }
+  }
+  return container;
+}
+
+//////////
 // Server creation
+
 const port = 3800;
 
 const server = http.createServer((request, response) => {
   let data = '';
 
+  response.send = function(object) {
+    const content = JSON.stringify(object, null, 2);
+
+    response.setHeader('Content-Type', 'application/json');
+    response.write(content);
+    response.end();
+  };
+
   request.on('data', (chunk) => { data = data + chunk; });
 
   request.on('end', () => {
-    const parsed = url.parse(request.url);
-    const query = querystring.parse(parsed.query);
     const method = request.method.toLowerCase();
+    const parsed = url.parse(request.url);
+
+    const query = querystring.parse(parsed.query);
 
     console.pp(method);
     console.pp(parsed);
@@ -235,11 +276,9 @@ const server = http.createServer((request, response) => {
 
     const object = pathname ? Object.$resolve(tree, pathname) : tree;
 
-    const render = JSON.stringify(object, null, 2);
+    const result = render(object, Number(query.depth || 1));
 
-    response.setHeader('Content-Type', 'application/json');
-    response.write(render);
-    response.end();
+    response.send(result);
   });
 });
 
