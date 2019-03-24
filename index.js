@@ -22,6 +22,10 @@ Object.defineProperty(String.prototype, 'stripWhitespace', {
 });
 
 Object.$resolve = function(object, propertyPath) {
+  if (!object || !propertyPath) {
+    return undefined;
+  }
+
   console.log('resolve', propertyPath);
   const parts = propertyPath.stripWhitespace().split(/[./]/);
 
@@ -286,17 +290,36 @@ const server = http.createServer((request, response) => {
     const query = querystring.parse(parsed.query);
     querystring.$setTypes(query);
 
+    let body = {};
+    try {
+      body = JSON.parse(data);
+    } catch (exc) {
+      // no error
+    }
+
     console.pp(method);
     console.pp(parsed);
     console.pp(query);
 
     const pathname = parsed.pathname.replace(/^\/+/, '').replace(/\/+/g, '/');
 
-    const object = pathname ? Object.$resolve(tree, pathname) : tree;
+    if (method === 'get') {
+      const object = pathname ? Object.$resolve(tree, pathname) : tree;
+      const result = render(object, query.depth || 1);
 
-    const result = render(object, query.depth || 1);
+      return response.send(result);
+    } else if (method === 'post') {
+      const object = pathname ? Object.$resolve(tree, pathname) : tree;
+      const update = Object.$flatten(body);
 
-    response.send(result);
+      console.pp(update);
+
+      Object.assign(object, body);
+
+      return response.send(object);
+    }
+
+    return response.send({});
   });
 });
 
